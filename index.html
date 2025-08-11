@@ -54,7 +54,7 @@
     .card .body{ padding:12px; }
 
     /* Pré-visualização */
-    .preview-area{ position:relative; aspect-ratio: 3 / 4; background:#070b14; border-radius:14px; overflow:hidden; }
+    .preview-area{ position:relative; aspect-ratio: 1 / 1; background:#070b14; border-radius:14px; overflow:hidden; }
     video, canvas, img#still{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
     canvas, img#still{ display:none; }
 
@@ -288,10 +288,10 @@
 
       // Desenhar frame no canvas com resolução do vídeo
       const vw = els.video.videoWidth, vh = els.video.videoHeight;
-      if(!vw || !vh){ alert('A câmera ainda está inicializando. Tente novamente.'); return; }
-      els.canvas.width = vw; els.canvas.height = vh;
+      const s = Math.min(vw, vh), sx = (vw - s)/2, sy = (vh - s)/2;
+      els.canvas.width = s; els.canvas.height = s;
       const ctx = els.canvas.getContext('2d');
-      ctx.drawImage(els.video, 0, 0, vw, vh);
+      ctx.drawImage(els.video, sx, sy, s, s, 0, 0, s, s);
 
       // Gerar Blob JPEG
       els.canvas.toBlob(async (blob)=>{
