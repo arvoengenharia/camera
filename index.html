@@ -27,11 +27,7 @@
           <div style="font-size:12px;color:#9bb0d9">Câmera • GPS • Salvar #ZonaBanda-E-N.jpg</div>
         </div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <span id="chipSecure" class="chip">HTTPS…</span>
-        <span id="chipGPS" class="chip">GPS: —</span>
-        <span id="chipCam" class="chip">Câmera: —</span>
-      </div>
+      <div class="statusbar"><span id="chipSecure" class="chip">HTTPS…</span><span id="chipGPS" class="chip">GPS: —</span><span id="chipCam" class="chip">Câmera: —</span></div>
     </header>
 
     <div class="grid">
@@ -55,7 +51,6 @@
       </section>
 
       <section class="card">
-        <h2>Localização / UTM</h2>
         <div class="body">
           <div class="row"><span class="lbl">Status GPS</span><span class="val" id="gpsStatus">—</span></div>
           <div class="row"><span class="lbl">Precisão</span><span class="val" id="acc">—</span></div>

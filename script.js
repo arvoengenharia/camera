@@ -40,7 +40,6 @@ const els = {
   btnRedo: document.getElementById('btnRedo'),
   btnSave: document.getElementById('btnSave'),
   gpsStatus: document.getElementById('gpsStatus'),
-  latlon: document.getElementById('latlon'),
   acc: document.getElementById('acc'),
   zoneBand: document.getElementById('zoneBand'),
   easting: document.getElementById('easting'),
@@ -53,7 +52,7 @@ let watchId = null;
 function updateUI(){
   const {lat,lon,acc,zone,band,e,n} = state;
   if(lat!=null && lon!=null){
-    els.latlon.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    // linha Lat,Lon removida do UI
     els.acc.textContent = acc!=null ? `${Math.round(acc)} m` : '—';
     els.zoneBand.textContent = (zone?zone:'—') + (band?band:'');
     els.easting.textContent = e ?? '—';
