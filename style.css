@@ -8,7 +8,23 @@
     header{display:flex;align-items:center;justify-content:space-between;gap:10px}
     .title{display:flex;align-items:center;gap:10px}
     .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6ee7ff,#a78bfa);display:grid;place-items:center;color:#08202a;font-weight:800}
-    .chip{font-size:12px;color:var(--muted);background:var(--card);padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.08)}
+    .chip {
+    font-size: 11px; /* menor */
+    color: var(--muted);
+    background: var(--card);
+    padding: 4px 8px; /* mais compacto */
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.08);
+    white-space: nowrap; /* não quebra */
+}
+
+header > div:last-child {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap; /* impede quebrar linha */
+    overflow: hidden;
+}
+
     .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
     @media (max-width:820px){.grid{grid-template-columns:1fr}}
     .card{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden}
