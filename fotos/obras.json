@@ -1,7 +1,0 @@
-{
-  "obras": [
-    { "id": "obra01", "nome": "Sede Alares" },
-    { "id": "obra02", "nome": "Unidade VSR" },
-    { "id": "obra03", "nome": "Centro Operacional" }
-  ]
-}
