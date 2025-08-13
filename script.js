@@ -43,6 +43,7 @@ function toUTM(lat, lon){
 
 // ---- Estado/UI ----
 const els = {
+  obraSelect: document.getElementById('obraSelect'),
   chipGPS: document.getElementById('chipGPS'),
   chipCam: document.getElementById('chipCam'),
   video: document.getElementById('video'),
@@ -117,25 +118,34 @@ async function startCamera(){
 async function capturePhoto(){
   if(!state.stream){ alert('Câmera inativa. Toque em "Abrir câmera".'); return; }
   if(state.lat==null || state.lon==null){ alert('Aguarde o GPS fixar.'); return; }
-  const vw = els.video.videoWidth, vh = els.video.videoHeight; if(!vw||!vh){ alert('Câmera iniciando…'); return; }
+
+  const vw = els.video.videoWidth, vh = els.video.videoHeight;
+  if(!vw || !vh){ alert('Câmera iniciando…'); return; }
+
   const s = Math.min(vw, vh), sx = (vw - s)/2, sy = (vh - s)/2;
   els.canvas.width = s; els.canvas.height = s;
-  const ctx = els.canvas.getContext('2d'); ctx.drawImage(els.video, sx, sy, s, s, 0, 0, s, s);
+
+  const ctx = els.canvas.getContext('2d');
+  ctx.drawImage(els.video, sx, sy, s, s, 0, 0, s, s);
 
   els.canvas.toBlob((blob)=>{
     if(!blob){ alert('Falha ao gerar imagem.'); return; }
-    const base = `#${state.zone}${state.band}-${state.e}-${state.n}`;
+
+    // Apenas adicionando o nome da obra
+    const obra = els.obraSelect?.value || 'Obra';
+    const base = `#${obra}-${state.zone}${state.band}-${state.e}-${state.n}`;
     const fname = `${base}.jpg`;
+
     if(state.captureURL) URL.revokeObjectURL(state.captureURL);
     const url = URL.createObjectURL(blob); state.captureURL = url;
 
     els.still.src = url; els.still.style.display='block';
     els.video.style.display='none'; els.canvas.style.display='none';
     els.btnRedo.style.display='inline-flex'; els.btnSave.style.display='inline-flex';
-    els.btnSave.textContent = `Salvar: ${fname}`; els.btnSave.href = url; els.btnSave.setAttribute('download', fname);
+    els.btnSave.textContent = `Salvar: ${fname}`;
+    els.btnSave.href = url; els.btnSave.setAttribute('download', fname);
   }, 'image/jpeg', 0.92);
 }
-
 function redo(){
   els.still.style.display='none'; els.video.style.display='block';
   els.btnRedo.style.display='none'; els.btnSave.style.display='none';
