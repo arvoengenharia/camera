@@ -1,3 +1,17 @@
+// Carregar obras.json e preencher select
+fetch('./fotos/obras.json')
+  .then(res => res.json())
+  .then(obras => {
+    const select = document.getElementById('obraSelect');
+    obras.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.nome;
+      opt.textContent = o.nome;
+      select.appendChild(opt);
+    });
+  })
+  .catch(err => console.error('Erro ao carregar obras:', err));
+
 // Sinaliza contexto seguro
 (function(){
   const el = document.getElementById('chipSecure');
