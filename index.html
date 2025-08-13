@@ -19,28 +19,28 @@
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <div class="title">
-        <div class="logo">UTM</div>
-        <div>
-          <div style="font-weight:800">GeoCam UTM</div>
-          <div style="font-size:12px;color:#9bb0d9">Câmera • GPS • Salvar #ZonaBanda-E-N.jpg</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <span id="chipSecure" class="chip">HTTPS…</span>
-        <span id="chipGPS" class="chip">GPS: —</span>
-        <span id="chipCam" class="chip">Câmera: —</span>
-      </div>
-      <select id="obraSelect">
-      <option value="">Selecione a obra</option>
-      </select>
-
-    </header>
+<header>
+  <div class="obra-select-wrap">
+    <select id="obraSelect" class="select-touch">
+      <option value="" selected>Selecione a obra</option>
+    </select>
+  </div>
+  <div class="title">
+    <div class="logo">UTM</div>
+    <div>
+      <div class="appname">GeoCam UTM</div>
+      <div class="subtitle">Câmera • GPS • Salvar #ZonaBanda-E-N.jpg</div>
+    </div>
+  </div>
+  <div class="statusbar">
+    <!-- REMOVER o chip HTTPS -->
+    <span id="chipGPS" class="chip">GPS</span>
+    <span id="chipCam" class="chip">CAM</span>
+  </div>
+</header>
 
     <div class="grid">
       <section class="card">
-        <h2>Captura</h2>
         <div class="body">
           <div class="preview">
             <video id="video" playsinline autoplay muted></video>
