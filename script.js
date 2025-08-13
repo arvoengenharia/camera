@@ -46,24 +46,54 @@ const els = {
   northing: document.getElementById('northing'),
   fname: document.getElementById('fname'),
 };
-const state = { lat:null, lon:null, acc:null, zone:null, band:null, e:null, n:null, stream:null, captureURL:null };
+const state = { lat:null, lon:null, acc:null, zone:null, band:null, e:null, n:null, stream:null, captureURL:null, obraId:null, obraNome:null };
 let watchId = null;
 
+// ---- Obras (carregar JSON e popular select) ----
+async function carregarObras(){
+  try{
+    const res = await fetch('./fotos/obras.json', {cache:'no-store'});
+    if(!res.ok) throw new Error('Falha ao carregar obras.json');
+    const data = await res.json();
+    const sel = document.getElementById('obraSelect');
+    sel.innerHTML = '<option value="">Selecionar…</option>' + (data.obras||[]).map(o => `<option value="${o.id}">${o.nome}</option>`).join('');
+    sel.addEventListener('change', (e)=>{
+      const id = e.target.value;
+      const item = (data.obras||[]).find(o => o.id===id);
+      state.obraId = id || null;
+      state.obraNome = item ? item.nome : null;
+      updateUI();
+    });
+  }catch(e){
+    console.warn(e);
+  }
+}
+
+// Utilitário: timestamp YYYYMMDD-HHMMSS
+function tsNow(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
+
+// Nome do arquivo no padrão solicitado
+function nomeArquivoAtual(withTimestamp=true){
+  const obra = state.obraNome ? state.obraNome : 'OBRA';
+  const base = `#${obra}-${state.zone||'--'}${state.band||''}-${state.e??'--'}-${state.n??'--'}`;
+  return withTimestamp ? `${base}_${tsNow()}.jpg` : `${base}.jpg`;
+}
+
 function updateUI(){
-  const {lat,lon,acc,zone,band,e,n} = state;
-  if(lat!=null && lon!=null){
-    // linha Lat,Lon removida do UI
-    els.acc.textContent = acc!=null ? `${Math.round(acc)} m` : '—';
-    els.zoneBand.textContent = (zone?zone:'—') + (band?band:'');
-    els.easting.textContent = e ?? '—';
-    els.northing.textContent = n ?? '—';
-    if(zone && band && e!=null && n!=null){
-      const base = `#${zone}${band}-${e}-${n}`;
-      els.fname.textContent = `${base}.jpg`;
-      els.badge.textContent = `UTM: ${base}`;
-      els.gpsStatus.innerHTML = '<span style="color:var(--ok)">Fixado</span>';
-      els.chipGPS.textContent = `GPS: ±${Math.round(acc||0)} m`; els.chipGPS.style.color='var(--ok)';
-    }
+  const {acc,zone,band,e,n} = state;
+  els.acc.textContent = acc!=null ? `${Math.round(acc)} m` : '—';
+  els.zoneBand.textContent = (zone?zone:'—') + (band?band:'');
+  els.easting.textContent = e ?? '—';
+  els.northing.textContent = n ?? '—';
+  if(zone && band && e!=null && n!=null){
+    els.fname.textContent = nomeArquivoAtual(false);
+    els.badge.textContent = `UTM: #${zone}${band}-${e}-${n}`;
+    els.gpsStatus.innerHTML = '<span style="color:var(--ok)">Fixado</span>';
+    els.chipGPS.textContent = `GPS: ±${Math.round(acc||0)} m`; els.chipGPS.style.color='var(--ok)';
   }
 }
 
@@ -102,7 +132,7 @@ async function startCamera(){
 
 async function capturePhoto(){
   if(!state.stream){ alert('Câmera inativa. Toque em "Abrir câmera".'); return; }
-  if(state.lat==null || state.lon==null){ alert('Aguarde o GPS fixar.'); return; }
+  if(state.zone==null || state.band==null || state.e==null || state.n==null){ alert('Aguarde o GPS fixar.'); return; }
   const vw = els.video.videoWidth, vh = els.video.videoHeight; if(!vw||!vh){ alert('Câmera iniciando…'); return; }
   const s = Math.min(vw, vh), sx = (vw - s)/2, sy = (vh - s)/2;
   els.canvas.width = s; els.canvas.height = s;
@@ -110,8 +140,7 @@ async function capturePhoto(){
 
   els.canvas.toBlob((blob)=>{
     if(!blob){ alert('Falha ao gerar imagem.'); return; }
-    const base = `#${state.zone}${state.band}-${state.e}-${state.n}`;
-    const fname = `${base}.jpg`;
+    const fname = nomeArquivoAtual(true);
     if(state.captureURL) URL.revokeObjectURL(state.captureURL);
     const url = URL.createObjectURL(blob); state.captureURL = url;
 
@@ -133,14 +162,18 @@ function stopAll(){
   if(state.captureURL){ URL.revokeObjectURL(state.captureURL); state.captureURL=null; }
 }
 
-els.btnStart.addEventListener('click', ()=>{ startGPS(); startCamera(); });
-els.btnShot.addEventListener('click', capturePhoto);
-els.btnRedo.addEventListener('click', redo);
+document.getElementById('btnStart').addEventListener('click', ()=>{ startGPS(); startCamera(); });
+document.getElementById('btnShot').addEventListener('click', capturePhoto);
+document.getElementById('btnRedo').addEventListener('click', redo);
 window.addEventListener('beforeunload', stopAll);
 
+// Service Worker + obras
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js'));
+  window.addEventListener('load', ()=> { navigator.serviceWorker.register('./sw.js'); carregarObras(); });
+} else {
+  window.addEventListener('load', carregarObras);
 }
 
+// Estado inicial
 if(!('mediaDevices' in navigator)){ els.chipCam.textContent='Câmera: não suportada'; els.chipCam.style.color='var(--danger)'; }
 else { els.chipCam.textContent='Câmera: pronta'; }
