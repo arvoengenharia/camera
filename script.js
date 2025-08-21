@@ -20,6 +20,7 @@ function toUTM(lat, lon) {
 
 // Áreas
 const AREAS = [
+  { nome: 'EXTERNO-P12', n0: 9354255, n1: 9354275, e0: 254902, e1: 254922 },
   { nome: 'EXTERNO-P01', n0: 9341182, n1: 9341202, e0: 249285, e1: 249305 },
   { nome: 'EXTERNO-P02', n0: 9341339, n1: 9341359, e0: 249285, e1: 249305 },
   { nome: 'EXTERNO-P03', n0: 9341476, n1: 9341496, e0: 249281, e1: 249301 },
@@ -42,7 +43,11 @@ function getArea(n, e) {
 
 function sanitizeFolder(area) {
   if (area === "FORA DE ÁREA") return "fora";
-  return area.replace(/[^0-9]/gi, '').replace(/^0+/, '').toLowerCase().padStart(1, '');
+  const match = area.match(/^([A-Z]+)-?P?(\d{1,3})$/i);
+  if (!match) return "desconhecido";
+  const prefix = match[1].toLowerCase();
+  const num = parseInt(match[2], 10);
+  return `${prefix}${num}`;
 }
 
 function getWeekNumber(date) {
@@ -139,7 +144,6 @@ function capturePhoto() {
   const ctx = els.canvas.getContext('2d');
   ctx.drawImage(els.video, sx, sy, s, s, 0, 0, s, s);
   els.canvas.toBlob(blob => {
-    const base = `#${state.zone}${state.band}-${state.e}-${state.n}`;
     const area = getArea(state.n, state.e);
     const url = URL.createObjectURL(blob);
     state.photos.push({ blob, url, area, date: new Date() });
@@ -181,9 +185,12 @@ async function downloadZIP() {
     const folderName = sanitizeFolder(photo.area);
     const week = getWeekNumber(photo.date);
     const fnameBase = `w${week}`;
-    const count = (folders[folderName]?.[week] || 0) + 1;
+
     folders[folderName] = folders[folderName] || {};
-    folders[folderName][week] = count;
+    folders[folderName][week] = folders[folderName][week] || 0;
+    folders[folderName][week]++;
+
+    const count = folders[folderName][week];
     const fname = count === 1 ? `${fnameBase}.jpg` : `${fnameBase}-${count}.jpg`;
     const blob = await photo.blob.arrayBuffer();
     zip.file(`${folderName}/${fname}`, blob);
