@@ -100,29 +100,47 @@ function updateCounter(){
   }
 }
 
-// Desenha (carimba) e captura o frame do vídeo em JPEG Blob
+// Desenha (carimba) e captura o frame do vídeo em JPEG Blob (sempre 1:1, com barras)
 async function captureStampedPhoto(){
   // Tenta obter geolocalização (alta precisão quando possível)
   let coords = null;
   try{
-    coords = await new Promise((resolve, reject)=>{
+    coords = await new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
         pos => resolve(pos.coords),
-        err => resolve(null), // se negar, segue sem posição
+        _err => resolve(null),
         { enableHighAccuracy:true, timeout:5000, maximumAge:0 }
       );
     });
   }catch(_){ /* ignore */ }
 
-  // Dimensões do canvas = do vídeo
-  const w = video.videoWidth || 1280;
-  const h = video.videoHeight || 720;
-  canvas.width = w;
-  canvas.height = h;
+  // Dimensões originais do vídeo
+  const vw = video.videoWidth  || 1280;
+  const vh = video.videoHeight || 720;
+
+  // Canvas quadrado (1:1)
+  const S = Math.max(vw, vh); // grande o bastante p/ nunca estourar qualidade
+  canvas.width  = S;
+  canvas.height = S;
+
   const ctx = canvas.getContext('2d');
 
-  // Desenha o frame do vídeo
-  ctx.drawImage(video, 0, 0, w, h);
+  // Fundo preto (barras)
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, S, S);
+
+  // Escala "contain" para desenhar o frame *sem recorte* dentro do quadrado
+  // Mantém proporção e centraliza (gera barras pretas quando necessário)
+  const scale = Math.min(S / vw, S / vh);
+  const drawW = Math.round(vw * scale);
+  const drawH = Math.round(vh * scale);
+  const dx = Math.round((S - drawW) / 2);
+  const dy = Math.round((S - drawH) / 2);
+
+  // Desenha o frame do vídeo centralizado
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(video, 0, 0, vw, vh, dx, dy, drawW, drawH);
 
   // Calcula UTM e Local (se tivermos coords)
   let stampLocal = "FORA DE ÁREA";
@@ -131,13 +149,23 @@ async function captureStampedPhoto(){
   if(coords){
     const lat = coords.latitude;
     const lon = coords.longitude;
-    const {E,N,zone,isSouth} = latLonToUTM(lat, lon);
+
+    const utmZoneFromLon = (L) => Math.floor((L + 180) / 6) + 1;
+    const zone = utmZoneFromLon(lon);
+    const isSouth = lat < 0;
+    const utmProj = `+proj=utm +zone=${zone} ${isSouth?'+south':''} +datum=WGS84 +units=m +no_defs`;
+    const [E, N] = proj4('WGS84', utmProj, [lon, lat]);
+
     stampUTM = {
       E: Math.round(E),
       N: Math.round(N),
       zone: zone + (isSouth ? 'S' : 'N')
     };
-    stampLocal = determineLocalName(stampUTM.N, stampUTM.E);
+
+    // Reutiliza os ranges definidos no topo do arquivo
+    const inRange = (v, [a,b]) => v >= a && v <= b;
+    const match = LOCAL_RANGES.find(r => inRange(stampUTM.N, r.N) && inRange(stampUTM.E, r.E));
+    stampLocal = match ? match.name : "FORA DE ÁREA";
   }
 
   // Texto do carimbo
@@ -156,22 +184,27 @@ async function captureStampedPhoto(){
   }else{
     lines.push(`UTM: indisponível`);
   }
-  lines.push(`${dd}/${MM}/${yyyy} ${hh}:${mm}:${ss}`);
+  lines.push(`${dd}/${MM}/${yyyy} ${hh}:${mm}/${ss}`.replace('/', ':')); // dd/MM/yyyy HH:mm:ss
 
-  // Desenha caixa semitransparente e texto no canto inferior esquerdo
+  // Desenha caixa e texto no canto inferior esquerdo **dentro do quadrado**
   ctx.save();
   const pad = 12;
-  ctx.font = `bold 22px Arial, sans-serif`;
-  const lineH = 28;
-  const boxW = Math.max(...lines.map(t => ctx.measureText(t).width)) + pad*2;
+  ctx.font = `bold 28px Arial, sans-serif`;
+  const lineH = 34;
+
+  // Largura do texto baseada na maior linha
+  const textW = Math.max(...lines.map(t => ctx.measureText(t).width));
+  const boxW = Math.min(textW + pad*2, S - 28); // margem de 14px de cada lado
   const boxH = lines.length * lineH + pad*2;
-  const x = 14, y = h - boxH - 14;
+
+  const x = 14;
+  const y = S - boxH - 14; // encostado no rodapé do quadrado (barras inclusas)
 
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
   ctx.fillRect(x, y, boxW, boxH);
 
   ctx.fillStyle = '#fff';
-  let ty = y + pad + 20;
+  let ty = y + pad + 22;
   for(const t of lines){
     ctx.fillText(t, x + pad, ty);
     ty += lineH;
@@ -181,7 +214,22 @@ async function captureStampedPhoto(){
   // Gera Blob JPEG
   const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
 
-  // Info p/ sessão
+  // Helpers já existentes
+  const getISOWeek = (date=new Date())=>{
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  };
+
+  const normalizeFolder = (localName)=>{
+    if(localName === "FORA DE ÁREA") return "foraarea";
+    const m = localName.match(/^EXTERNO-P0?(\d+)$/i);
+    if(!m) return "foraarea";
+    return `externo${m[1]}`;
+  };
+
   const week = getISOWeek(now);
   const localName = stampLocal;
   const folderName = normalizeFolder(localName);
@@ -189,6 +237,7 @@ async function captureStampedPhoto(){
 
   return { blob, week, localName, folderName, stampText };
 }
+
 
 // Exporta sessão como ZIP (e limpa)
 async function exportSessionZip(){
